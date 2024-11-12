@@ -1,0 +1,88 @@
+module ALU_1_bit_23BEC0118 (
+    input a,                // First input
+    input b,                // Second input
+    input [2:0] operation,  // 3-bit control signal for operation selection
+    output reg result,      // 1-bit result of the operation
+    output reg carryOut     // Carry out for addition and subtraction
+);
+
+always @(*) begin
+    // Default values
+    result = 0;
+    carryOut = 0;
+
+    case (operation)
+        3'b000: begin // AND operation
+            result = a & b;
+            carryOut = 0;
+        end
+        3'b001: begin // OR operation
+            result = a | b;
+            carryOut = 0;
+        end
+        3'b010: begin // XOR operation
+            result = a ^ b;
+            carryOut = 0;
+        end
+        3'b011: begin // ADD operation
+            {carryOut, result} = a + b; // Concatenating carry out with result
+        end
+        3'b100: begin // SUB operation
+            {carryOut, result} = a - b; // Concatenating carry out with result
+        end
+        default: begin
+            result = 1'b0; // Default case for safety
+            carryOut = 0;
+        end
+    endcase
+end
+
+endmodule
+`timescale 1ns / 1ps
+
+module tb_ALU_1_bit;
+
+    reg a;
+    reg b;
+    reg [2:0] operation;
+    wire result;
+    wire carryOut;
+
+    // Instantiate the ALU
+    ALU_1_bit_23BEC0118 uut (
+        .a(a),
+        .b(b),
+        .operation(operation),
+        .result(result),
+        .carryOut(carryOut)
+    );
+
+    initial begin
+    $display("-------------------------------------------------------------------------------------------------------------------------------------------------" ); //design
+  	$display("LAB Serial No.: 03 Reg no: 23BEC0118 Name: Utkarsh " ); //Name plate details
+    $display("-----------------------------------------------------------------" ); 
+
+        // Test AND operation
+        a = 1; b = 1; operation = 3'b000; #10;
+        $display("AND: a=%b, b=%b, result=%b, carryOut=%b", a, b, result, carryOut);
+
+        // Test OR operation
+        a = 1; b = 0; operation = 3'b001; #10;
+        $display("OR: a=%b, b=%b, result=%b, carryOut=%b", a, b, result, carryOut);
+
+        // Test XOR operation
+        a = 1; b = 0; operation = 3'b010; #10;
+        $display("XOR: a=%b, b=%b, result=%b, carryOut=%b", a, b, result, carryOut);
+
+        // Test ADD operation
+        a = 1; b = 1; operation = 3'b011; #10;
+        $display("ADD: a=%b, b=%b, result=%b, carryOut=%b", a, b, result, carryOut);
+
+        // Test SUB operation
+        a = 1; b = 0; operation = 3'b100; #10;
+        $display("SUB: a=%b, b=%b, result=%b, carryOut=%b", a, b, result, carryOut);
+
+        // End simulation
+        $finish;
+    end
+endmodule

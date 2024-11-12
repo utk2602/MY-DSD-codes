@@ -1,23 +1,144 @@
-module mux32to1_L7L8_04_23BEC0118(Y,S,I);
-   input [4:0]S;  
-   input [31:0]I;    
-   wire [3:0]D;  
-   output Y;
-assign Y = (~S[4] & ~S[3] & D[0]) |(~S[4] & S[3] & D[1])| (S[4] & ~S[3] & D[2]) |(S[4] & S[3] & D[3]);
-assign D[0] = (~S[2] & ~S[1] & ~S[0] & I[0]) | (~S[2]& ~S[1] & S[0] & I[1]) |
-              (~S[2] & S[1] & ~S[0] & I[2])  | (~S[2] & S[1] & S[0] & I[3] )|
-              (S[2] & ~S[1] & ~S[0] & I[4])  | (S[2] & ~S[1] & S[0] & I[5]) |
-              (S[2] & S[1] & ~S[0] & I[6])   | (S[2] & S[1] & S[0] & I[7]);
-assign D[1] = (~S[2] & ~S[1] & ~S[0] & I[8]) | (~S[2] & ~S[1]& S[0] & I[9]) |
-              ( ~S[2] & S[1] & ~S[0] & I[10])| (~S[2] & S[1] & S[0] & I[11])|
-              (S[2] & ~S[1] & ~S[0] & I[12]) | (S[2] & ~S[1] & S[0] & I[13])|
-              (S[2] & S[1] & ~S[0] & I[14])  | (S[2] & S[1] & S[0] & I[15]);
-assign D[2] = (~S[2] & ~S[1] & ~S[0] & I[16])| (~ S[2] & ~S[1] & S[0] & I[17])| 
-              ( ~S[2] & S[1] & ~S[0] & I[18])| (~S[2] & S[1] & S[0] & I[19])  |
-              (S[2] & ~S[1] & ~S[0] & I[20]) | (S[2] & ~S[1] & S[0] & I[21] ) | 
-              (S[2] & S[1] & ~S[0] & I[22])  | (S[2] & S[1] & S[0] & I[23]);
-assign D[3] = (~S[2] & ~S[1] & ~S[0] & I[24])| (~S[2] & ~S[1] & S[0] & I[25])|
-            (~S[2]& S[1] & ~S[0] & I[26])  | (~S[2] & S[1] & S[0] & I[27]) |
-        (S[2] & ~S[1] & ~S[0] & I[28]) | ( S[2] & ~S[1] & S[0] & I[29])|
-        (S[2] & S[1] & ~S[0] & I[30])  | (S[2] & S[1] & S[0] & I[31]);
+// --- Passcode Verification Module ---
+module passcode_verify(
+    input [3:0] entered_code,  // Entered passcode (4 bits)
+    input clk,                  // Clock signal
+    output reg authenticated    // Output: 1 if passcode is correct, else 0
+);
+    reg [3:0] correct_code = 4'b1010; // Predefined passcode (e.g., 10)
+
+    always @(posedge clk) begin
+        if (entered_code == correct_code)
+            authenticated <= 1;
+        else
+            authenticated <= 0;
+    end
+endmodule
+
+// --- Vote Counting Module ---
+module vote_counter(
+    input [3:0] candidate_id,  // Candidate ID (1-10)
+    input vote,                 // Vote signal (1 = vote cast)
+    input reset,                // Reset signal (to reset counters)
+    input clk,                  // Clock signal
+    output reg [7:0] result_0,  // Vote counter for candidate 1
+    output reg [7:0] result_1,  // Vote counter for candidate 2
+    output reg [7:0] result_2,  // Vote counter for candidate 3
+    output reg [7:0] result_3,  // Vote counter for candidate 4
+    output reg [7:0] result_4,  // Vote counter for candidate 5
+    output reg [7:0] result_5,  // Vote counter for candidate 6
+    output reg [7:0] result_6,  // Vote counter for candidate 7
+    output reg [7:0] result_7,  // Vote counter for candidate 8
+    output reg [7:0] result_8,  // Vote counter for candidate 9
+    output reg [7:0] result_9   // Vote counter for candidate 10
+);
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            // Reset vote counts for all candidates to 0
+            result_0 <= 8'b00000000;
+            result_1 <= 8'b00000000;
+            result_2 <= 8'b00000000;
+            result_3 <= 8'b00000000;
+            result_4 <= 8'b00000000;
+            result_5 <= 8'b00000000;
+            result_6 <= 8'b00000000;
+            result_7 <= 8'b00000000;
+            result_8 <= 8'b00000000;
+            result_9 <= 8'b00000000;
+        end
+        else if (vote) begin
+            // Increment the vote count for the selected candidate
+            case (candidate_id)
+                4'd1: result_0 <= result_0 + 1;
+                4'd2: result_1 <= result_1 + 1;
+                4'd3: result_2 <= result_2 + 1;
+                4'd4: result_3 <= result_3 + 1;
+                4'd5: result_4 <= result_4 + 1;
+                4'd6: result_5 <= result_5 + 1;
+                4'd7: result_6 <= result_6 + 1;
+                4'd8: result_7 <= result_7 + 1;
+                4'd9: result_8 <= result_8 + 1;
+                4'd10: result_9 <= result_9 + 1;
+                default: ;
+            endcase
+        end
+    end
+endmodule
+
+// --- Top-Level Voting Machine Module ---
+module voting_machine(
+    input [3:0] candidate_id,      // Candidate to vote for (1-10)
+    input vote,                    // Signal to cast the vote (1 for vote)
+    input [3:0] passcode_input,    // Entered passcode (4 bits)
+    input clk,                      // Clock signal
+    input reset,                    // Reset signal
+    output passcode_valid,          // Output: 1 if passcode is valid, 0 otherwise
+    output [7:0] result_0, result_1, result_2, result_3, result_4, result_5, result_6, result_7, result_8, result_9 // Final vote counts for each candidate
+);
+
+    wire authenticated;
+    
+    // Passcode verification module
+    passcode_verify u1 (
+        .entered_code(passcode_input),
+        .clk(clk),
+        .authenticated(authenticated)
+    );
+    
+    // Vote counting module
+    vote_counter u2 (
+        .candidate_id(candidate_id),
+        .vote(vote && authenticated), // Only allow voting if authenticated
+        .reset(reset),
+        .clk(clk),
+        .result_0(result_0),
+        .result_1(result_1),
+        .result_2(result_2),
+        .result_3(result_3),
+        .result_4(result_4),
+        .result_5(result_5),
+        .result_6(result_6),
+        .result_7(result_7),
+        .result_8(result_8),
+        .result_9(result_9)
+    );
+
+    // Passcode validity output
+    assign passcode_valid = authenticated;
+
+endmodule
+
+// --- FPGA Integration ---
+module voting_machine_fpga(
+    input [3:0] candidate_id,      // Candidate to vote for (1-10)
+    input vote,                    // Signal to cast the vote (1 for vote)
+    input [3:0] passcode_input,    // Entered passcode (4 bits)
+    input clk,                      // Clock signal
+    input reset,                    // Reset signal
+    output passcode_valid,          // Output: 1 if passcode is valid
+    output [7:0] result_0, result_1, result_2, result_3, result_4, result_5, result_6, result_7, result_8, result_9, // Final vote counts for each candidate
+    output passcode_valid_led      // Passcode valid LED
+);
+    // Instantiating the voting machine module
+    voting_machine u1 (
+        .candidate_id(candidate_id),
+        .vote(vote),
+        .passcode_input(passcode_input),
+        .clk(clk),
+        .reset(reset),
+        .result_0(result_0),
+        .result_1(result_1),
+        .result_2(result_2),
+        .result_3(result_3),
+        .result_4(result_4),
+        .result_5(result_5),
+        .result_6(result_6),
+        .result_7(result_7),
+        .result_8(result_8),
+        .result_9(result_9),
+        .passcode_valid(passcode_valid)
+    );
+    
+    // Display the passcode valid status on an LED
+    assign passcode_valid_led = passcode_valid;
+
 endmodule

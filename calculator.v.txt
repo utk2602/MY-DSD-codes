@@ -1,0 +1,168 @@
+module Calculator (
+    input clk,                  // Clock signal
+    input rst,                  // Reset signal
+    input mode,                 // Mode: 0 for unsigned, 1 for signed
+    input [1:0] op,             // Operation: 00 for add, 01 for subtract, 10 for multiply
+    input [7:0] a,              // 8-bit operand a
+    input [7:0] b,              // 8-bit operand b
+    output reg [15:0] result,   // 16-bit result (for multiplication and large addition results)
+    output reg carry_out,       // Carry flag for unsigned operations
+    output reg overflow         // Overflow flag for signed operations
+);
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            result <= 16'b0;
+            carry_out <= 0;
+            overflow <= 0;
+        end else begin
+            case (op)
+                2'b00: begin
+                    // Addition
+                    if (mode == 1'b0) begin
+                        // Unsigned addition
+                        {carry_out, result} = a + b;
+                        overflow = 0;  // No overflow for unsigned addition
+                    end else begin
+                        // Signed addition
+                        result = $signed(a) + $signed(b);
+                        overflow = ((a[7] == b[7]) && (result[7] != a[7]));
+                        carry_out = 0; // Carry is irrelevant for signed addition
+                    end
+                end
+                
+                2'b01: begin
+                    // Subtraction
+                    if (mode == 1'b0) begin
+                        // Unsigned subtraction
+                        {carry_out, result} = a - b;
+                        overflow = 0; // No overflow for unsigned subtraction
+                    end else begin
+                        // Signed subtraction
+                        result = $signed(a) - $signed(b);
+                        overflow = ((a[7] != b[7]) && (result[7] != a[7]));
+                        carry_out = 0; // Carry is irrelevant for signed subtraction
+                    end
+                end
+
+                2'b10: begin
+                    // Multiplication
+                    if (mode == 1'b0) begin
+                        // Unsigned multiplication
+                        result = a * b;
+                        carry_out = 0; // No carry for multiplication
+                        overflow = 0;  // Overflow is not checked for unsigned multiplication
+                    end else begin
+                        // Signed multiplication
+                        result = $signed(a) * $signed(b);
+                        carry_out = 0;
+                        overflow = 0; // No overflow for signed multiplication
+                    end
+                end
+                
+                default: begin
+                    result <= 16'b0;
+                    carry_out <= 0;
+                    overflow <= 0;
+                end
+            endcase
+        end
+    end
+endmodule
+module Calculator_tb;
+
+    // Testbench signals
+    reg clk;
+    reg rst;
+    reg mode;  // 0 for unsigned, 1 for signed
+    reg [1:0] op; // 00: add, 01: subtract, 10: multiply
+    reg [7:0] a, b;
+    
+    wire [15:0] result;
+    wire carry_out;
+    wire overflow;
+
+    // Instantiate the Calculator module
+    Calculator uut (
+        .clk(clk),
+        .rst(rst),
+        .mode(mode),
+        .op(op),
+        .a(a),
+        .b(b),
+        .result(result),
+        .carry_out(carry_out),
+        .overflow(overflow)
+    );
+
+    // Clock generation
+    always begin
+        #5 clk = ~clk;  // 10ns clock period
+    end
+
+    // Initialize signals
+    initial begin
+        clk = 0;
+        rst = 0;
+        mode = 0;  // Start with unsigned mode
+        op = 2'b00;  // Start with addition operation
+        a = 8'b00000000;
+        b = 8'b00000000;
+        
+        // Apply reset
+        #10 rst = 1; // Apply reset
+        #10 rst = 0; // Deassert reset
+
+        // Test Cases
+        // Test: Unsigned addition (a = 12, b = 5)
+        #10 test_operation(2'b00, 8'b00001100, 8'b00000101, 0);
+        
+        // Test: Unsigned subtraction (a = 12, b = 5)
+        #10 test_operation(2'b01, 8'b00001100, 8'b00000101, 0);
+        
+        // Test: Unsigned multiplication (a = 12, b = 5)
+        #10 test_operation(2'b10, 8'b00001100, 8'b00000101, 0);
+        
+        // Switch to signed mode and test
+        #10 mode = 1;  // Switch to signed mode
+
+        // Test: Signed addition (a = 127, b = 1 - overflow case)
+        #10 test_operation(2'b00, 8'b01111111, 8'b00000001, 1);
+        
+        // Test: Signed subtraction (a = -128, b = 1 - overflow case)
+        #10 test_operation(2'b01, 8'b10000000, 8'b00000001, 1);
+        
+        // Test: Signed multiplication (a = 12, b = -8)
+        #10 test_operation(2'b10, 8'b00001100, 8'b11111000, 0);
+
+        // Finish simulation
+        #10 $finish;
+    end
+
+    // Task to perform operations
+    task test_operation;
+        input [1:0] operation;
+        input [7:0] op_a;
+        input [7:0] op_b;
+        input expected_overflow;
+        
+        begin
+            // Set the operands
+            op = operation;
+            a = op_a;
+            b = op_b;
+
+            // Wait for the result to stabilize
+            #5;
+
+            // Display results for the operation
+            $display("Testing operation: %b (mode: %b)", op, mode);
+            $display("Operand A: %d, Operand B: %d", a, b);
+            $display("Result: %d, Carry Out: %b, Overflow: %b", result, carry_out, overflow);
+            if (overflow !== expected_overflow) begin
+                $display("ERROR: Overflow mismatch (expected: %b, got: %b)", expected_overflow, overflow);
+            end
+        end
+    endtask
+
+endmodule
