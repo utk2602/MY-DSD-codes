@@ -1,0 +1,48 @@
+module bit_multiplier_L7L8_03_23BEC0118 (
+    input wire a,    // 1-bit multiplicand
+    input wire b,    // 1-bit multiplier
+    output wire p    // Product (1-bit)
+);
+
+    // Intermediate signals
+    wire and_ab, and_0b;
+
+    // Compute products using AND gates
+    and (and_ab, a, b); // a * b
+    and (and_0b, 0, b); // 0 * b (always 0)
+
+    // 2-to-1 MUX to select the product
+    // Select line = a
+    assign p = a ? and_ab : and_0b;
+
+endmodule
+`timescale 1ns / 1ps
+
+module testbench;
+    reg a;            // 1-bit multiplicand
+    reg b;            // 1-bit multiplier
+    wire p;          // Product output
+
+     // Instantiate the decoder module(“Name:Utkarsh Reg no:23BEC0118 Sl no:4 Slot:L7L8”)
+    bit_multiplier_L7L8_03_23BEC0118 uut (
+        .a(a),
+        .b(b),
+        .p(p)
+    );
+
+    initial begin
+        // Test all combinations of a and b
+        a = 0; b = 0; #10; // Expect p = 0
+        a = 0; b = 1; #10; // Expect p = 0
+        a = 1; b = 0; #10; // Expect p = 0
+        a = 1; b = 1; #10; // Expect p = 1
+
+        // End simulation
+        $finish;
+    end
+
+    initial begin
+        // Monitor changes in inputs and output
+        $monitor("Time: %0t | a: %b | b: %b | p: %b", $time, a, b, p);
+    end
+endmodule
